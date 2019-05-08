@@ -30,6 +30,15 @@ impl Endpoint {
 
         Endpoint { name, url, requires, components }
     }
+
+    pub fn default_payload(&self) -> Value {
+        let mut payload = json!({});
+        for component in self.components.iter() {
+            let (key, value) = component.default_payload();
+            payload[key] = value;
+        }
+        payload
+    }
 }
 
 #[cfg(test)]
@@ -110,5 +119,17 @@ mod public_api {
         } else {
             panic!("material is not mapping");
         }
+    }
+
+    #[test]
+    fn default_payload_generation() {
+        let e = create_endpoint();
+        let default_payload = e.default_payload();
+        assert_eq!(default_payload["constructionMaterial"]["wallMaterial"], "plasterOfParis");
+        assert_eq!(default_payload["constructionMaterial"]["flammable"], false);
+        assert_eq!(default_payload["constructionMaterial"]["tonnage"], 100);
+        assert_eq!(default_payload["isSurroundedByAMoat"], true);
+        assert_eq!(default_payload["sizeInSquareFeet"], 11001100);
+        assert_eq!(default_payload["houseType"], "castle");
     }
 }
