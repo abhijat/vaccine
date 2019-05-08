@@ -1,5 +1,7 @@
 use serde_json::{Map, Value};
+
 use crate::extract_string_from_value;
+use crate::random_values::*;
 
 #[derive(Debug)]
 pub enum DefaultValue {
@@ -25,20 +27,41 @@ pub struct Component {
     pub name: String,
     pub kind: String,
     pub default_value: DefaultValue,
+    json_node: Value,
 }
 
 impl Component {
     pub fn new(v: &Value) -> Self {
+        let json_node = v.clone();
         let v = v.as_object().expect("input is not object!");
+
         let name = extract_string_from_value(v, "name");
         let kind = extract_string_from_value(v, "kind");
+
         let default_value = Self::extract_default_value(v, "default_value")
             .expect("failed to extract default value");
-        Component { name, kind, default_value }
+
+        Component { name, kind, default_value, json_node }
     }
 
     pub fn default_payload(&self) -> (String, Value) {
         (self.name.clone(), self.default_value.to_json())
+    }
+
+    pub fn randomized_payload(&self) -> (String, Value) {
+        (self.name.clone(), self.random_value())
+    }
+
+    fn random_value(&self) -> Value {
+        match self.kind.as_str() {
+            "string" => json!(generate_random_string()),
+            "number" => json!(generate_random_number()),
+            "boolean" => json!(generate_random_boolean()),
+            "mapping" => {
+                Self::extract_random_values_from_child_nodes(&self.json_node["default_value"])
+            }
+            _ => panic!(format!("unknown kind {}", self.kind))
+        }
     }
 
 
@@ -74,6 +97,19 @@ impl Component {
 
         output
     }
+
+    fn extract_random_values_from_child_nodes(v: &Value) -> Value {
+        let schema_node = &v["schema"];
+
+        let mut output: Value = json! {{}};
+        for schema_element in schema_node.as_array()
+            .expect("schema node is not array") {
+            let component = Self::new(schema_element);
+            output[component.name] = component.random_value();
+        }
+
+        output
+    }
 }
 
 #[cfg(test)]
@@ -97,6 +133,11 @@ mod public_api {
             _ => panic!("unexpected value!"),
         }
     }
+}
+
+#[cfg(test)]
+mod default_payload {
+    use super::*;
 
     #[test]
     fn generate_simple_payload() {
@@ -121,6 +162,28 @@ mod public_api {
         let (key, value) = component.default_payload();
         assert_eq!(&key, "sn");
         assert_eq!(value, json!({"sn": false, "ss": "ss", "snnum": 11111}));
+    }
+}
+
+#[cfg(test)]
+mod randomized_payload {
+    use super::*;
+
+    #[test]
+    fn generate_randomized_payload() {
+        let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "mapping",
+          "default_value": {"schema": [
+              { "name": "sn", "kind": "boolean", "default_value": false },
+              { "name": "ss", "kind": "string", "default_value": "ss" },
+              { "name": "snnum", "kind": "number", "default_value": 11111 }
+            ] } }"#).unwrap();
+
+        let component = Component::new(&v);
+        let (key, value) = component.randomized_payload();
+        assert_eq!(&key, "sn");
+        assert!(value["sn"].is_boolean());
+        assert!(value["ss"].is_string());
+        assert!(value["snnum"].is_number());
     }
 }
 
