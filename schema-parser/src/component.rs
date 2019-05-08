@@ -84,8 +84,11 @@ impl Component {
 mod tests {
     use crate::component::*;
 
+    use super::DefaultValue::*;
+    use serde_json::Value;
+
     #[test]
-    fn create_component() {
+    fn simple_component_creation() {
         let payload = r#"{ "name": "service-name", "kind": "string", "default_value": "a-simple-service" }"#;
 
         let v: serde_json::Value = serde_json::from_str(payload).unwrap();
@@ -101,13 +104,28 @@ mod tests {
     }
 
     #[test]
-    fn component_payload() {
+    fn generate_simple_payload() {
         let payload = r#"{ "name": "service-name", "kind": "string", "default_value": "a-simple-service" }"#;
         let component = Component::new(&serde_json::from_str(payload).unwrap());
         let (key, value) = component.default_payload();
 
         assert_eq!(&key, "service-name");
         assert_eq!(value, json!("a-simple-service"));
+    }
+
+    #[test]
+    fn generate_complex_payload() {
+        let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "mapping",
+          "default_value": {"schema": [
+              { "name": "sn", "kind": "boolean", "default_value": false },
+              { "name": "ss", "kind": "string", "default_value": "ss" },
+              { "name": "snnum", "kind": "number", "default_value": 11111 }
+            ] } }"#).unwrap();
+
+        let component = Component::new(&v);
+        let (key, value) = component.default_payload();
+        assert_eq!(&key, "sn");
+        assert_eq!(value, json!({"sn": false, "ss": "ss", "snnum": 11111}));
     }
 }
 
