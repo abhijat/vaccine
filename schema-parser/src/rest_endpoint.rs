@@ -124,12 +124,12 @@ mod public_api {
     #[test]
     fn default_payload_generation() {
         let e = create_endpoint();
-        let default_payload = e.default_payload();
-        assert_eq!(default_payload["constructionMaterial"]["wallMaterial"], "plasterOfParis");
-        assert_eq!(default_payload["constructionMaterial"]["flammable"], false);
-        assert_eq!(default_payload["constructionMaterial"]["tonnage"], 100);
-        assert_eq!(default_payload["isSurroundedByAMoat"], true);
-        assert_eq!(default_payload["sizeInSquareFeet"], 11001100);
-        assert_eq!(default_payload["houseType"], "castle");
+        let p = e.default_payload();
+        assert_eq!(p["constructionMaterial"]["wallMaterial"], "plasterOfParis");
+        assert_eq!(p["constructionMaterial"]["flammable"], false);
+        assert_eq!(p["constructionMaterial"]["tonnage"], 100);
+        assert_eq!(p["sizeInSquareFeet"], 11001100);
+        assert_eq!(p["isSurroundedByAMoat"], true);
+        assert_eq!(p["houseType"], "castle");
     }
 }
