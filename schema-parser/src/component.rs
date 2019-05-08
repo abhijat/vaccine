@@ -36,6 +36,10 @@ impl Component {
         Component { name, kind, default_value }
     }
 
+    pub fn payload(&self) -> (String, Value) {
+        (self.name.clone(), self.default_value.to_json())
+    }
+
     fn extract_string(v: &Map<String, Value>, key: &str) -> String {
         v.get(key).expect("missing key name")
             .as_str().expect("name is not a string")
@@ -102,6 +106,7 @@ mod extract_value_tests {
     use serde_json::Value;
 
     use super::*;
+    use super::DefaultValue::*;
 
     #[test]
     fn extract_string_from_payload() {
@@ -110,7 +115,7 @@ mod extract_value_tests {
         let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
         assert!(v.is_some());
         match v.unwrap() {
-            DefaultValue::String(s) => assert_eq!(&s, "ss"),
+            String(s) => assert_eq!(&s, "ss"),
             _ => panic!("unexpected variant"),
         }
     }
@@ -122,7 +127,7 @@ mod extract_value_tests {
         let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
         assert!(v.is_some());
         match v.unwrap() {
-            DefaultValue::Number(n) => assert_eq!(n, 10000),
+            Number(n) => assert_eq!(n, 10000),
             _ => panic!("unexpected variant"),
         }
     }
@@ -134,45 +139,26 @@ mod extract_value_tests {
         let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
         assert!(v.is_some());
         match v.unwrap() {
-            DefaultValue::Boolean(b) => assert!(!b),
+            Boolean(b) => assert!(!b),
             _ => panic!("unexpected variant"),
         }
     }
 
     #[test]
     fn extract_object_from_payload() {
-        let v: Value = serde_json::from_str(r#"{
-  "name": "sn",
-  "kind": "boolean",
-  "default_value": {
-    "schema": [
-      {
-        "name": "sn",
-        "kind": "boolean",
-        "default_value": false
-      },
-      {
-        "name": "ss",
-        "kind": "string",
-        "default_value": "ss"
-      },
-      {
-        "name": "snnum",
-        "kind": "number",
-        "default_value": 11111
-      }
-    ]
-  }
-}"#)
-            .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
-        assert!(v.is_some());
-        match v.unwrap() {
-            DefaultValue::Mapping(m) => assert_eq!(m, json!({
-            "sn": false,
-            "ss": "ss",
-            "snnum": 11111,
-            })),
+        let v: Value = serde_json::from_str(r#"{"name": "sn",
+          "kind": "mapping",
+          "default_value": {"schema": [
+              { "name": "sn", "kind": "boolean", "default_value": false },
+              { "name": "ss", "kind": "string", "default_value": "ss" },
+              { "name": "snnum", "kind": "number", "default_value": 11111 }
+            ] } }"#).unwrap();
+
+        let component = Component::new(&v);
+        assert_eq!(&component.kind, "mapping");
+
+        match component.default_value {
+            Mapping(m) => assert_eq!(m, json!({"sn": false, "ss": "ss", "snnum": 11111})),
             _ => panic!("unexpected variant"),
         }
     }
