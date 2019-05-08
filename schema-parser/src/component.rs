@@ -36,7 +36,7 @@ impl Component {
         Component { name, kind, default_value }
     }
 
-    pub fn payload(&self) -> (String, Value) {
+    pub fn default_payload(&self) -> (String, Value) {
         (self.name.clone(), self.default_value.to_json())
     }
 
@@ -46,7 +46,7 @@ impl Component {
             .to_string()
     }
 
-    pub fn extract_default_value(v: &Map<String, serde_json::Value>, key: &str)
+    pub fn extract_default_value(v: &Map<String, Value>, key: &str)
                                  -> Option<DefaultValue> {
         let v = v.get(key).expect(&format!("could not extract {} from map", key));
 
@@ -99,6 +99,16 @@ mod tests {
             _ => panic!("unexpected value!"),
         }
     }
+
+    #[test]
+    fn component_payload() {
+        let payload = r#"{ "name": "service-name", "kind": "string", "default_value": "a-simple-service" }"#;
+        let component = Component::new(&serde_json::from_str(payload).unwrap());
+        let (key, value) = component.default_payload();
+
+        assert_eq!(&key, "service-name");
+        assert_eq!(value, json!("a-simple-service"));
+    }
 }
 
 #[cfg(test)]
@@ -146,8 +156,7 @@ mod extract_value_tests {
 
     #[test]
     fn extract_object_from_payload() {
-        let v: Value = serde_json::from_str(r#"{"name": "sn",
-          "kind": "mapping",
+        let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "mapping",
           "default_value": {"schema": [
               { "name": "sn", "kind": "boolean", "default_value": false },
               { "name": "ss", "kind": "string", "default_value": "ss" },
