@@ -81,7 +81,7 @@ impl Component {
 }
 
 #[cfg(test)]
-mod tests {
+mod public_api {
     use crate::component::*;
 
     use super::DefaultValue::*;
@@ -130,7 +130,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod extract_value_tests {
+mod value_extraction {
     use serde_json::Value;
 
     use super::*;
