@@ -1,4 +1,5 @@
 use serde_json::{Map, Value};
+use crate::extract_string_from_value;
 
 #[derive(Debug)]
 pub enum DefaultValue {
@@ -29,8 +30,8 @@ pub struct Component {
 impl Component {
     pub fn new(v: &Value) -> Self {
         let v = v.as_object().expect("input is not object!");
-        let name = Self::extract_string(v, "name");
-        let kind = Self::extract_string(v, "kind");
+        let name = extract_string_from_value(v, "name");
+        let kind = extract_string_from_value(v, "kind");
         let default_value = Self::extract_default_value(v, "default_value")
             .expect("failed to extract default value");
         Component { name, kind, default_value }
@@ -40,11 +41,6 @@ impl Component {
         (self.name.clone(), self.default_value.to_json())
     }
 
-    fn extract_string(v: &Map<String, Value>, key: &str) -> String {
-        v.get(key).expect("missing key name")
-            .as_str().expect("name is not a string")
-            .to_string()
-    }
 
     pub fn extract_default_value(v: &Map<String, Value>, key: &str)
                                  -> Option<DefaultValue> {
@@ -82,10 +78,9 @@ impl Component {
 
 #[cfg(test)]
 mod public_api {
-    use crate::component::*;
-
-    use super::DefaultValue::*;
     use serde_json::Value;
+
+    use crate::component::*;
 
     #[test]
     fn simple_component_creation() {
