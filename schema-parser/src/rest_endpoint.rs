@@ -39,6 +39,15 @@ impl Endpoint {
         }
         payload
     }
+
+    pub fn randomized_payload(&self) -> Value {
+        let mut payload = json!({});
+        for component in self.components.iter() {
+            let (key, value) = component.randomized_payload();
+            payload[key] = value;
+        }
+        payload
+    }
 }
 
 #[cfg(test)]
@@ -131,5 +140,17 @@ mod public_api {
         assert_eq!(p["sizeInSquareFeet"], 11001100);
         assert_eq!(p["isSurroundedByAMoat"], true);
         assert_eq!(p["houseType"], "castle");
+    }
+
+    #[test]
+    fn randomized_payload_generation() {
+        let e = create_endpoint();
+        let p = e.randomized_payload();
+        assert!(p["constructionMaterial"]["wallMaterial"].is_string());
+        assert!(p["constructionMaterial"]["flammable"].is_boolean());
+        assert!(p["constructionMaterial"]["tonnage"].is_number());
+        assert!(p["sizeInSquareFeet"].is_number());
+        assert!(p["isSurroundedByAMoat"].is_boolean());
+        assert!(p["houseType"].is_string());
     }
 }
