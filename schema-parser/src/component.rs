@@ -1,7 +1,10 @@
+use chrono_tz::Tz;
 use serde_json::{Map, Value};
 
 use crate::extract_string_from_value;
 use crate::random_values::*;
+use chrono::{Utc, DateTime, TimeZone};
+use humantime::parse_duration;
 
 #[derive(Debug)]
 pub enum DefaultValue {
@@ -9,6 +12,11 @@ pub enum DefaultValue {
     Number(i64),
     Boolean(bool),
     Mapping(Value),
+    Datetime {
+        format: String,
+        default: String,
+        timezone: String,
+    },
 }
 
 impl DefaultValue {
@@ -18,6 +26,51 @@ impl DefaultValue {
             DefaultValue::Number(i) => json!(i),
             DefaultValue::Boolean(b) => json!(b),
             DefaultValue::Mapping(m) => m.clone(),
+            _ => unimplemented!()
+        }
+    }
+
+    fn calculate_offset(now_string: &str, prefix: &str) -> chrono::Duration {
+        let offset = now_string.chars().skip(prefix.len()).collect::<String>();
+        let std_duration = parse_duration(&offset)
+            .expect(&format!("bad duration string {}", offset));
+
+        chrono::Duration::from_std(std_duration).expect("failed to convert duration!")
+    }
+
+    fn parse_now_string(&self, d: DateTime<Tz>, now_string: &str) -> DateTime<Tz> {
+        match now_string {
+            "now" => {
+                d
+            }
+            _ if now_string.starts_with("now + ") => {
+                let duration = Self::calculate_offset(now_string, "now + ");
+                d + duration
+            }
+
+            _ if now_string.starts_with("now - ") => {
+                let duration = Self::calculate_offset(now_string, "now - ");
+                d - duration
+            }
+
+            _ => unimplemented!()
+        }
+    }
+
+    fn strftime(&self) -> String {
+        match self {
+            DefaultValue::Datetime { format, default, timezone } => {
+                if !default.starts_with("now") {
+                    default.to_string()
+                } else {
+                    let tz: Tz = timezone.parse().expect(&format!("failed to parse timezone {}", timezone));
+                    let now = Utc::now().with_timezone(&tz);
+                    self.parse_now_string(now, default).format(format).to_string()
+                }
+            }
+            _ => {
+                panic!("unexpected function call on non-datetime!")
+            }
         }
     }
 }
