@@ -27,12 +27,11 @@ pub struct Component {
     pub name: String,
     pub kind: String,
     pub default_value: DefaultValue,
-    json_node: Value,
+    pub children: Option<Vec<Component>>,
 }
 
 impl Component {
     pub fn new(v: &Value) -> Self {
-        let json_node = v.clone();
         let v = v.as_object().expect("input is not object!");
 
         let name = extract_string_from_value(v, "name");
@@ -41,7 +40,13 @@ impl Component {
         let default_value = Self::extract_default_value(v, "default_value")
             .expect("failed to extract default value");
 
-        Component { name, kind, default_value, json_node }
+        let children = if kind == "mapping" {
+            Some(Self::populate_children(v))
+        } else {
+            None
+        };
+
+        Component { name, kind, default_value, children }
     }
 
     pub fn default_payload(&self) -> (String, Value) {
@@ -58,10 +63,19 @@ impl Component {
             "number" => json!(generate_random_number()),
             "boolean" => json!(generate_random_boolean()),
             "mapping" => {
-                Self::extract_random_values_from_child_nodes(&self.json_node["default_value"])
+                self.extract_random_values_from_child_nodes()
             }
             _ => panic!(format!("unknown kind {}", self.kind))
         }
+    }
+
+    pub fn populate_children(v: &Map<String, Value>) -> Vec<Component> {
+        v["default_value"]["schema"]
+            .as_array()
+            .expect("default_value -> schema is not an array")
+            .iter()
+            .map(Self::new)
+            .collect()
     }
 
 
@@ -98,14 +112,15 @@ impl Component {
         output
     }
 
-    fn extract_random_values_from_child_nodes(v: &Value) -> Value {
-        let schema_node = &v["schema"];
-
+    fn extract_random_values_from_child_nodes(&self) -> Value {
         let mut output: Value = json! {{}};
-        for schema_element in schema_node.as_array()
-            .expect("schema node is not array") {
-            let component = Self::new(schema_element);
-            output[component.name] = component.random_value();
+
+        if let Some(ref children) = self.children {
+            for child in children {
+                output[&child.name] = child.random_value();
+            }
+        } else {
+            panic!("tried to access self.children when no such field");
         }
 
         output
@@ -114,8 +129,6 @@ impl Component {
 
 #[cfg(test)]
 mod public_api {
-    use serde_json::Value;
-
     use crate::component::*;
 
     #[test]
