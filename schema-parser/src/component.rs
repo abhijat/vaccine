@@ -116,7 +116,7 @@ impl Component {
         let mut output: Value = json! {{}};
 
         if let Some(ref children) = self.children {
-            random_elements_from_collection(children)
+            choose_random_elements_from_collection(children)
                 .for_each(|child| output[&child.name] = child.random_value());
         } else {
             panic!("tried to access self.children when no such field");

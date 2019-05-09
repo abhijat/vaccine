@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::component::Component;
 use crate::extract_string_from_value;
-use crate::random_values::random_elements_from_collection;
+use crate::random_values::choose_random_elements_from_collection;
 
 #[derive(Debug)]
 pub struct Endpoint {
@@ -43,7 +43,7 @@ impl Endpoint {
 
     pub fn randomized_payload(&self) -> Value {
         let mut payload = json!({});
-        for component in random_elements_from_collection(&self.components) {
+        for component in choose_random_elements_from_collection(&self.components) {
             let (key, value) = component.randomized_payload();
             payload[key] = value;
         }
