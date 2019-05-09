@@ -116,9 +116,8 @@ impl Component {
         let mut output: Value = json! {{}};
 
         if let Some(ref children) = self.children {
-            for child in children {
-                output[&child.name] = child.random_value();
-            }
+            children.iter()
+                .for_each(|child| output[&child.name] = child.random_value());
         } else {
             panic!("tried to access self.children when no such field");
         }
