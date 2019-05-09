@@ -116,7 +116,7 @@ impl Component {
         let mut output: Value = json! {{}};
 
         if let Some(ref children) = self.children {
-            children.iter()
+            random_elements_from_collection(children)
                 .for_each(|child| output[&child.name] = child.random_value());
         } else {
             panic!("tried to access self.children when no such field");
@@ -193,9 +193,14 @@ mod randomized_payload {
         let component = Component::new(&v);
         let (key, value) = component.randomized_payload();
         assert_eq!(&key, "sn");
-        assert!(value["sn"].is_boolean());
-        assert!(value["ss"].is_string());
-        assert!(value["snnum"].is_number());
+
+        assert!(value.is_object());
+
+        let value = value.as_object().unwrap();
+
+        value.get("sn").map(|v| assert!(v.is_boolean()));
+        value.get("ss").map(|v| assert!(v.is_string()));
+        value.get("snnum").map(|v| assert!(v.is_number()));
     }
 }
 

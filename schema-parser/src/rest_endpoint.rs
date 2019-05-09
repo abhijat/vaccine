@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use crate::component::Component;
 use crate::extract_string_from_value;
+use crate::random_values::random_elements_from_collection;
 
 #[derive(Debug)]
 pub struct Endpoint {
@@ -42,7 +43,7 @@ impl Endpoint {
 
     pub fn randomized_payload(&self) -> Value {
         let mut payload = json!({});
-        for component in self.components.iter() {
+        for component in random_elements_from_collection(&self.components) {
             let (key, value) = component.randomized_payload();
             payload[key] = value;
         }
@@ -146,11 +147,21 @@ mod public_api {
     fn randomized_payload_generation() {
         let e = create_endpoint();
         let p = e.randomized_payload();
-        assert!(p["constructionMaterial"]["wallMaterial"].is_string());
-        assert!(p["constructionMaterial"]["flammable"].is_boolean());
-        assert!(p["constructionMaterial"]["tonnage"].is_number());
-        assert!(p["sizeInSquareFeet"].is_number());
-        assert!(p["isSurroundedByAMoat"].is_boolean());
-        assert!(p["houseType"].is_string());
+
+        assert!(p.is_object());
+        let p = p.as_object().unwrap();
+
+        // None of these assertions are guaranteed to run!
+        p.get("sizeInSquareFeet").map(|v| assert!(v.is_number()));
+        p.get("isSurroundedByAMoat").map(|v| assert!(v.is_boolean()));
+        p.get("houseType").map(|v| assert!(v.is_string()));
+
+        p.get("constructionMaterial").map(|material| {
+            assert!(material.is_object());
+            let material = material.as_object().unwrap();
+            material.get("wallMaterial").map(|v| v.is_string());
+            material.get("flammable").map(|v| v.is_boolean());
+            material.get("tonnage").map(|v| v.is_number());
+        });
     }
 }
