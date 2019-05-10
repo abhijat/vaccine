@@ -9,6 +9,7 @@ use serde_json::{Map, Value};
 mod component;
 mod rest_endpoint;
 mod random_values;
+mod date_offset_from_now;
 
 pub fn extract_string_from_value(v: &Map<String, Value>, key: &str) -> String {
     v.get(key)
