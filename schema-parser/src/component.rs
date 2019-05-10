@@ -5,6 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::extract_string_from_value;
 use crate::random_values::*;
+use crate::value_extractors::extract_datetime_from_node;
+use crate::date_offset_from_now::{is_now, datetime_from_now};
 
 #[derive(Debug)]
 pub enum DefaultValue {
@@ -26,7 +28,14 @@ impl DefaultValue {
             DefaultValue::Number(i) => json!(i),
             DefaultValue::Boolean(b) => json!(b),
             DefaultValue::Mapping(m) => m.clone(),
-            _ => unimplemented!()
+            DefaultValue::Datetime {format, default, timezone} => {
+                if is_now(default) {
+                    let d = datetime_from_now(default, timezone);
+                    json!(d.format(format).to_string())
+                } else {
+                    json!(default)
+                }
+            }
         }
     }
 }
@@ -46,8 +55,12 @@ impl Component {
         let name = extract_string_from_value(v, "name");
         let kind = extract_string_from_value(v, "kind");
 
-        let default_value = Self::extract_default_value(v, "default_value")
-            .expect("failed to extract default value");
+        let default_value = if kind == "datetime" {
+            extract_datetime_from_node(v)
+        } else {
+            Self::extract_default_value(v, "default_value")
+                .expect("failed to extract default value")
+        };
 
         let children = if kind == "mapping" {
             Some(Self::populate_children(v))
@@ -272,5 +285,50 @@ mod value_extraction {
             Mapping(m) => assert_eq!(m, json!({"sn": false, "ss": "ss", "snnum": 11111})),
             _ => panic!("unexpected variant"),
         }
+    }
+}
+
+#[cfg(test)]
+mod datetime_field {
+    use super::*;
+    use chrono_tz::Asia;
+    use chrono::{NaiveDateTime, NaiveDate, Datelike};
+
+    #[test]
+    fn datetime_with_fixed_value() {
+        let v = serde_json::from_str(r#"{
+            "name": "start_date",
+            "kind": "datetime",
+            "default_value": "2019-01-13",
+            "timezone": "Asia/Kolkata",
+            "format": "%Y-%m-%d"
+        }"#).unwrap();
+
+        let c = Component::new(&v);
+        let (key, value) = c.default_payload();
+
+        assert_eq!(key, "start_date");
+        assert_eq!(value, json!("2019-01-13"));
+    }
+
+    #[test]
+    fn datetime_based_on_now() {
+        let v = serde_json::from_str(r#"{
+            "name": "start_date",
+            "kind": "datetime",
+            "default_value": "now + 100years",
+            "timezone": "Asia/Kolkata",
+            "format": "%Y-%m-%d"
+        }"#).unwrap();
+
+        let c = Component::new(&v);
+        let (key, value) = c.default_payload();
+
+        let value = value.as_str().unwrap();
+        assert_eq!(key, "start_date");
+
+        let now = Utc::now().with_timezone(&Asia::Kolkata);
+        let parsed = NaiveDate::parse_from_str(value, "%Y-%m-%d").unwrap();
+        assert_eq!(now.year() + 100, parsed.year());
     }
 }

@@ -11,7 +11,7 @@ enum Direction {
     Behind,
 }
 
-fn datetime_from_now(date_string: &str, tzname: &str) -> chrono::DateTime<Tz> {
+pub fn datetime_from_now(date_string: &str, tzname: &str) -> chrono::DateTime<Tz> {
     if is_now(date_string) {
         let direction = get_direction(date_string);
         if direction.is_none() {
@@ -28,7 +28,7 @@ fn datetime_from_now(date_string: &str, tzname: &str) -> chrono::DateTime<Tz> {
     }
 }
 
-fn is_now(s: &str) -> bool {
+pub fn is_now(s: &str) -> bool {
     s.starts_with("now")
 }
 
