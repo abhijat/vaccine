@@ -86,6 +86,17 @@ impl Component {
             "boolean" => json!(generate_random_boolean()),
             "mapping" => {
                 self.extract_random_values_from_child_nodes()
+            },
+            "datetime" => {
+                if let DefaultValue::Datetime {
+                    format,
+                    default,
+                    timezone
+                } = &self.default_value {
+                    json!(generate_random_datetime(format, timezone))
+                } else {
+                    panic!("kind and default value do not match!")
+                }
             }
             _ => panic!(format!("unknown kind {}", self.kind))
         }

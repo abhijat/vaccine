@@ -80,6 +80,20 @@ mod public_api {
               "default_value": true
             },
             {
+              "name": "startDate",
+              "kind": "datetime",
+              "timezone": "Asia/Kolkata",
+              "format": "%Y-%m-%d %H:%M:%S",
+              "default_value": "2001-01-01 11:22:33"
+            },
+            {
+              "name": "endDate",
+              "kind": "datetime",
+              "timezone": "Asia/Kolkata",
+              "format": "%Y-%m-%d %H:%M:%S",
+              "default_value": "now + 500minutes"
+            },
+            {
               "name": "constructionMaterial",
               "kind": "mapping",
               "default_value": {
@@ -102,7 +116,7 @@ mod public_api {
         assert_eq!(e.name, "a");
         assert_eq!(e.url, "http://localhost:8000/api/v2/house");
         assert_eq!(e.requires.len(), 0);
-        assert_eq!(e.components.len(), 4);
+        assert_eq!(e.components.len(), 6);
     }
 
     #[test]
@@ -122,7 +136,16 @@ mod public_api {
             panic!("isSurroundedByAMoat is not a boolean");
         }
 
-        if let DefaultValue::Mapping(ref m) = e[3].default_value {
+        if let DefaultValue::Datetime { format, default, timezone } = &e[3].default_value {
+            assert_eq!(timezone, "Asia/Kolkata");
+            assert_eq!(default, "2001-01-01 11:22:33");
+        }
+
+        if let DefaultValue::Datetime { format, default, timezone } = &e[4].default_value {
+            assert_eq!(timezone, "Asia/Kolkata");
+        }
+
+        if let DefaultValue::Mapping(ref m) = e[5].default_value {
             assert_eq!(m.get("wallMaterial"), Some(&json!("plasterOfParis")));
             assert_eq!(m.get("tonnage"), Some(&json!(100)));
             assert_eq!(m.get("flammable"), Some(&json!(false)));
