@@ -2,7 +2,7 @@ use chrono::Utc;
 use chrono_tz::Tz;
 use humantime::parse_duration;
 
-use crate::date_offset_from_now::Direction::{Ahead, Behind, Here};
+use crate::datetime::Direction::{Ahead, Behind, Here};
 
 #[derive(Debug, PartialEq)]
 enum Direction {
@@ -13,16 +13,13 @@ enum Direction {
 
 pub fn datetime_from_now(date_string: &str, tzname: &str) -> chrono::DateTime<Tz> {
     if is_now(date_string) {
-        let direction = get_direction(date_string);
-        if direction.is_none() {
-            panic!(format!("invalid date string {}", date_string));
-        }
-
-        let direction = direction.unwrap();
         let now = get_now(tzname);
-
-        let offset = get_offset(date_string);
-        shift_date(now, offset, direction)
+        let direction = get_direction(date_string);
+        match direction {
+            None => panic!(format!("invalid date string {}", date_string)),
+            Some(Here) => now,
+            _ => shift_date(now, get_offset(date_string), direction.unwrap()),
+        }
     } else {
         panic!("string passed in was not nowable!");
     }
@@ -70,7 +67,7 @@ fn shift_date(d: chrono::DateTime<Tz>, offset: chrono::Duration, direction: Dire
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Utc, Datelike, Timelike};
+    use chrono::{Datelike, Timelike, Utc};
     use chrono_tz::{Asia, US};
 
     use super::*;
@@ -130,5 +127,15 @@ mod tests {
 
         let d = datetime_from_now("now + 1month", "Asia/Kolkata");
         assert_eq!(d.month(), now.month() + 1);
+
+        let d = datetime_from_now("now", "Asia/Kolkata");
+        assert_eq!(now.date(), d.date());
+    }
+
+    #[test]
+    fn parse_now() {
+        let now = Utc::now().with_timezone(&Asia::Kolkata);
+        let d = datetime_from_now("now", "Asia/Kolkata");
+        assert_eq!(now.date(), d.date());
     }
 }

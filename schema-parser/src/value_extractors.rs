@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 
-use crate::component::DefaultValue;
 use crate::extract_string_from_value;
+use crate::default_value::DefaultValue;
 
 pub fn extract_datetime_from_node(node: &Map<String, Value>) -> DefaultValue {
     let timezone = extract_string_from_value(node, "timezone");

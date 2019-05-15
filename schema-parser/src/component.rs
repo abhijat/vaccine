@@ -6,39 +6,8 @@ use serde_json::{Map, Value};
 use crate::extract_string_from_value;
 use crate::random_values::*;
 use crate::value_extractors::extract_datetime_from_node;
-use crate::date_offset_from_now::{is_now, datetime_from_now};
-
-#[derive(Debug)]
-pub enum DefaultValue {
-    String(String),
-    Number(i64),
-    Boolean(bool),
-    Mapping(Value),
-    Datetime {
-        format: String,
-        default: String,
-        timezone: String,
-    },
-}
-
-impl DefaultValue {
-    pub fn to_json(&self) -> serde_json::Value {
-        match self {
-            DefaultValue::String(s) => json!(s),
-            DefaultValue::Number(i) => json!(i),
-            DefaultValue::Boolean(b) => json!(b),
-            DefaultValue::Mapping(m) => m.clone(),
-            DefaultValue::Datetime {format, default, timezone} => {
-                if is_now(default) {
-                    let d = datetime_from_now(default, timezone);
-                    json!(d.format(format).to_string())
-                } else {
-                    json!(default)
-                }
-            }
-        }
-    }
-}
+use crate::datetime::{is_now, datetime_from_now};
+use crate::default_value::DefaultValue;
 
 #[derive(Debug)]
 pub struct Component {
@@ -162,6 +131,7 @@ impl Component {
 #[cfg(test)]
 mod public_api {
     use crate::component::*;
+    use crate::default_value::DefaultValue;
 
     #[test]
     fn simple_component_creation() {

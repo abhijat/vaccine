@@ -55,7 +55,7 @@ impl Endpoint {
 mod public_api {
     use serde_json::Value;
 
-    use crate::component::DefaultValue;
+    use crate::default_value::DefaultValue;
 
     use super::*;
 
