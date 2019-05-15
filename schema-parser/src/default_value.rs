@@ -39,18 +39,27 @@ impl DefaultValue {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use chrono::Utc;
+    use chrono_tz::Asia::Kolkata;
     use serde_json::to_string;
+
+    use super::*;
 
     #[test]
     fn test_json_conversion_of_datetime_variant() {
         let d = DefaultValue::Datetime {
             format: "%Y-%m-%d %H::%M::%S".to_string(),
             default: "now".to_string(),
-            timezone: "Asia/Kolkata".to_string()
+            timezone: "Asia/Kolkata".to_string(),
         };
 
-        let json_value = d.to_json();
-        eprintln!("json_value = {:?}", json_value);
+        let json_value = d.to_json().to_string();
+
+        let d = Utc::now()
+            .with_timezone(&Kolkata)
+            .format("\"%Y-%m-%d %H::%M::%S\"")
+            .to_string();
+
+        assert_eq!(json_value, d);
     }
 }
