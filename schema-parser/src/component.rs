@@ -1,13 +1,9 @@
-use chrono::{DateTime, TimeZone, Utc};
-use chrono_tz::Tz;
-use humantime::parse_duration;
 use serde_json::{Map, Value};
 
+use crate::default_value::DefaultValue;
 use crate::extract_string_from_value;
 use crate::random_values::*;
-use crate::value_extractors::extract_datetime_from_node;
-use crate::datetime::{is_now, datetime_from_now};
-use crate::default_value::DefaultValue;
+use crate::value_extractors::{extract_datetime_from_node, extract_default_value_from_node};
 
 #[derive(Debug)]
 pub struct Component {
@@ -24,11 +20,10 @@ impl Component {
         let name = extract_string_from_value(v, "name");
         let kind = extract_string_from_value(v, "kind");
 
-        let default_value = if kind == "datetime" {
-            extract_datetime_from_node(v)
-        } else {
-            Self::extract_default_value(v, "default_value")
-                .expect("failed to extract default value")
+        let default_value = match kind.as_str() {
+            "datetime" => extract_datetime_from_node(v),
+            "relationship" => extract_default_value_from_node(v, entity_map),
+            _ => Self::extract_default_value(v, "default_value").expect("failed to extract default value")
         };
 
         let children = if kind == "mapping" {
@@ -55,7 +50,7 @@ impl Component {
             "boolean" => json!(generate_random_boolean()),
             "mapping" => {
                 self.extract_random_values_from_child_nodes()
-            },
+            }
             "datetime" => {
                 if let DefaultValue::Datetime {
                     format,
@@ -271,9 +266,10 @@ mod value_extraction {
 
 #[cfg(test)]
 mod datetime_field {
-    use super::*;
+    use chrono::{Datelike, NaiveDate, NaiveDateTime};
     use chrono_tz::Asia;
-    use chrono::{NaiveDateTime, NaiveDate, Datelike};
+
+    use super::*;
 
     #[test]
     fn datetime_with_fixed_value() {

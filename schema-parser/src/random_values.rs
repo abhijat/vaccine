@@ -1,4 +1,4 @@
-use chrono::{TimeZone, Utc};
+use chrono::Utc;
 use chrono_tz::Tz;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
