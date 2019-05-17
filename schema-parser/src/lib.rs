@@ -7,6 +7,7 @@ extern crate chrono_tz;
 use serde_json::{Map, Value};
 
 mod component;
+mod entity_map;
 mod default_value;
 mod rest_endpoint;
 mod random_values;
