@@ -3,6 +3,7 @@ use serde_json::Value;
 use crate::component::Component;
 use crate::extract_string_from_value;
 use crate::random_values::choose_random_elements_from_collection;
+use crate::entity_map::EntityMap;
 
 #[derive(Debug)]
 pub struct Endpoint {
@@ -13,7 +14,7 @@ pub struct Endpoint {
 }
 
 impl Endpoint {
-    pub fn new(v: &Value) -> Self {
+    pub fn new(v: &Value, entity_map: &EntityMap) -> Self {
         let v = v.as_object().expect("payload is not object");
         let name = extract_string_from_value(v, "name");
         let url = extract_string_from_value(v, "url");
@@ -26,7 +27,7 @@ impl Endpoint {
         let components: Vec<Component> = v.get("schema").expect("missing `schema`")
             .as_array().expect("`schema` is not an array")
             .iter()
-            .map(Component::new)
+            .map(|v| Component::new(v, entity_map))
             .collect();
 
         Endpoint { name, url, requires, components }
@@ -58,6 +59,7 @@ mod public_api {
     use crate::default_value::DefaultValue;
 
     use super::*;
+    use std::collections::HashMap;
 
     fn create_endpoint() -> Endpoint {
         let payload = r#"{ "name": "a",
@@ -107,7 +109,7 @@ mod public_api {
         ] }"#;
 
         let v: Value = serde_json::from_str(payload).expect("failed to parse payload");
-        Endpoint::new(&v)
+        Endpoint::new(&v, &EntityMap { entity_map: HashMap::new() })
     }
 
     #[test]

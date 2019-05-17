@@ -12,7 +12,8 @@ pub fn extract_datetime_from_node(node: &Map<String, Value>) -> DefaultValue {
     DefaultValue::Datetime { format, timezone, default }
 }
 
-pub fn extract_default_value_from_node(node: &Map<String, Value>, entity_map: EntityMap) -> DefaultValue {
+pub fn extract_default_value_from_node(node: &Map<String, Value>, entity_map: &EntityMap)
+                                       -> DefaultValue {
     let relation = extract_string_from_value(node, "relation");
     let fieldname = extract_string_from_value(node, "fieldname");
 
@@ -41,7 +42,7 @@ mod tests {
             "fieldname": "id"
         });
 
-        let d = extract_default_value_from_node(node.as_object().unwrap(), em);
+        let d = extract_default_value_from_node(node.as_object().unwrap(), &em);
         match d {
             DefaultValue::Number(n) => assert_eq!(n, 1112),
             _ => panic!()

@@ -1,6 +1,7 @@
 use serde_json::{Map, Value};
 
 use crate::default_value::DefaultValue;
+use crate::entity_map::EntityMap;
 use crate::extract_string_from_value;
 use crate::random_values::*;
 use crate::value_extractors::{extract_datetime_from_node, extract_default_value_from_node};
@@ -14,7 +15,7 @@ pub struct Component {
 }
 
 impl Component {
-    pub fn new(v: &Value) -> Self {
+    pub fn new(v: &Value, entity_map: &EntityMap) -> Self {
         let v = v.as_object().expect("input is not object!");
 
         let name = extract_string_from_value(v, "name");
@@ -23,11 +24,12 @@ impl Component {
         let default_value = match kind.as_str() {
             "datetime" => extract_datetime_from_node(v),
             "relationship" => extract_default_value_from_node(v, entity_map),
-            _ => Self::extract_default_value(v, "default_value").expect("failed to extract default value")
+            _ => Self::extract_default_value(v, "default_value", entity_map)
+                .expect("failed to extract default value")
         };
 
         let children = if kind == "mapping" {
-            Some(Self::populate_children(v))
+            Some(Self::populate_children(v, entity_map))
         } else {
             None
         };
@@ -66,17 +68,17 @@ impl Component {
         }
     }
 
-    pub fn populate_children(v: &Map<String, Value>) -> Vec<Component> {
+    pub fn populate_children(v: &Map<String, Value>, entity_map: &EntityMap) -> Vec<Component> {
         v["default_value"]["schema"]
             .as_array()
             .expect("default_value -> schema is not an array")
             .iter()
-            .map(Self::new)
+            .map(|v| Self::new(v, entity_map))
             .collect()
     }
 
 
-    pub fn extract_default_value(v: &Map<String, Value>, key: &str)
+    pub fn extract_default_value(v: &Map<String, Value>, key: &str, entity_map: &EntityMap)
                                  -> Option<DefaultValue> {
         let v = v.get(key).expect(&format!("could not extract {} from map", key));
 
@@ -88,12 +90,12 @@ impl Component {
             v if v.is_boolean() =>
                 Some(DefaultValue::Boolean(v.as_bool().unwrap())),
             v if v.is_object() =>
-                Some(DefaultValue::Mapping(Self::extract_default_values_from_child_nodes(v))),
+                Some(DefaultValue::Mapping(Self::extract_default_values_from_child_nodes(v, entity_map))),
             _ => None,
         }
     }
 
-    fn extract_default_values_from_child_nodes(v: &Value) -> Value {
+    fn extract_default_values_from_child_nodes(v: &Value, entity_map: &EntityMap) -> Value {
         let schema_node = v.as_object()
             .expect("node is not object!")
             .get("schema")
@@ -102,7 +104,7 @@ impl Component {
         let mut output: Value = json! {{}};
         for schema_element in schema_node.as_array()
             .expect("schema node is not array") {
-            let component = Self::new(schema_element);
+            let component = Self::new(schema_element, entity_map);
             output[component.name] = component.default_value.to_json();
         }
 
@@ -125,15 +127,22 @@ impl Component {
 
 #[cfg(test)]
 mod public_api {
+    use std::collections::HashMap;
+
     use crate::component::*;
     use crate::default_value::DefaultValue;
+    use crate::entity_map::EntityMap;
+
+    fn empty() -> EntityMap {
+        EntityMap { entity_map: HashMap::new() }
+    }
 
     #[test]
     fn simple_component_creation() {
         let payload = r#"{ "name": "service-name", "kind": "string", "default_value": "a-simple-service" }"#;
 
         let v: serde_json::Value = serde_json::from_str(payload).unwrap();
-        let component = Component::new(&v);
+        let component = Component::new(&v, &empty());
 
         assert_eq!(&component.name, "service-name");
         assert_eq!(&component.kind, "string");
@@ -147,12 +156,14 @@ mod public_api {
 
 #[cfg(test)]
 mod default_payload {
+    use std::collections::HashMap;
+
     use super::*;
 
     #[test]
     fn generate_simple_payload() {
         let payload = r#"{ "name": "service-name", "kind": "string", "default_value": "a-simple-service" }"#;
-        let component = Component::new(&serde_json::from_str(payload).unwrap());
+        let component = Component::new(&serde_json::from_str(payload).unwrap(), &EntityMap { entity_map: HashMap::new() });
         let (key, value) = component.default_payload();
 
         assert_eq!(&key, "service-name");
@@ -168,7 +179,7 @@ mod default_payload {
               { "name": "snnum", "kind": "number", "default_value": 11111 }
             ] } }"#).unwrap();
 
-        let component = Component::new(&v);
+        let component = Component::new(&v, &EntityMap { entity_map: HashMap::new() });
         let (key, value) = component.default_payload();
         assert_eq!(&key, "sn");
         assert_eq!(value, json!({"sn": false, "ss": "ss", "snnum": 11111}));
@@ -177,6 +188,8 @@ mod default_payload {
 
 #[cfg(test)]
 mod randomized_payload {
+    use std::collections::HashMap;
+
     use super::*;
 
     #[test]
@@ -188,7 +201,7 @@ mod randomized_payload {
               { "name": "snnum", "kind": "number", "default_value": 11111 }
             ] } }"#).unwrap();
 
-        let component = Component::new(&v);
+        let component = Component::new(&v, &EntityMap { entity_map: HashMap::new() });
         let (key, value) = component.randomized_payload();
         assert_eq!(&key, "sn");
 
@@ -204,6 +217,8 @@ mod randomized_payload {
 
 #[cfg(test)]
 mod value_extraction {
+    use std::collections::HashMap;
+
     use serde_json::Value;
 
     use super::*;
@@ -213,7 +228,7 @@ mod value_extraction {
     fn extract_string_from_payload() {
         let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "string", "default_value": "ss"}"#)
             .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
+        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value", &EntityMap { entity_map: HashMap::new() });
         assert!(v.is_some());
         match v.unwrap() {
             String(s) => assert_eq!(&s, "ss"),
@@ -225,7 +240,7 @@ mod value_extraction {
     fn extract_number_from_payload() {
         let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "number", "default_value": 10000}"#)
             .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
+        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value", &EntityMap { entity_map: HashMap::new() });
         assert!(v.is_some());
         match v.unwrap() {
             Number(n) => assert_eq!(n, 10000),
@@ -237,7 +252,7 @@ mod value_extraction {
     fn extract_boolean_from_payload() {
         let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "boolean", "default_value": false}"#)
             .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
+        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value", &EntityMap { entity_map: HashMap::new() });
         assert!(v.is_some());
         match v.unwrap() {
             Boolean(b) => assert!(!b),
@@ -254,7 +269,7 @@ mod value_extraction {
               { "name": "snnum", "kind": "number", "default_value": 11111 }
             ] } }"#).unwrap();
 
-        let component = Component::new(&v);
+        let component = Component::new(&v, &EntityMap { entity_map: HashMap::new() });
         assert_eq!(&component.kind, "mapping");
 
         match component.default_value {
@@ -266,7 +281,9 @@ mod value_extraction {
 
 #[cfg(test)]
 mod datetime_field {
-    use chrono::{Datelike, NaiveDate, NaiveDateTime};
+    use std::collections::HashMap;
+
+    use chrono::{Datelike, NaiveDate, NaiveDateTime, Utc};
     use chrono_tz::Asia;
 
     use super::*;
@@ -281,7 +298,7 @@ mod datetime_field {
             "format": "%Y-%m-%d"
         }"#).unwrap();
 
-        let c = Component::new(&v);
+        let c = Component::new(&v, &EntityMap { entity_map: HashMap::new() });
         let (key, value) = c.default_payload();
 
         assert_eq!(key, "start_date");
@@ -298,7 +315,7 @@ mod datetime_field {
             "format": "%Y-%m-%d"
         }"#).unwrap();
 
-        let c = Component::new(&v);
+        let c = Component::new(&v, &EntityMap { entity_map: HashMap::new() });
         let (key, value) = c.default_payload();
 
         let value = value.as_str().unwrap();
