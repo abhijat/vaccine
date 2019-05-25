@@ -12,3 +12,4 @@ mod rest_endpoint;
 mod random_values;
 mod value_extractors;
 mod datetime;
+mod configuration;
