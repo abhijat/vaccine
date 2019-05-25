@@ -2,7 +2,6 @@ use serde_json::{Map, Value};
 
 use crate::default_value::DefaultValue;
 use crate::entity_map::EntityMap;
-use crate::extract_string_from_value;
 
 pub fn extract_datetime_from_node(node: &Map<String, Value>) -> DefaultValue {
     let timezone = extract_string_from_value(node, "timezone");
@@ -19,6 +18,14 @@ pub fn extract_default_value_from_node(node: &Map<String, Value>, entity_map: &E
 
     entity_map.get(relation.as_str(), fieldname.as_str())
         .expect(&format!("failed to find {}.{} in entity map", relation, fieldname))
+}
+
+pub fn extract_string_from_value(v: &Map<String, Value>, key: &str) -> String {
+    v.get(key)
+        .expect("missing key name")
+        .as_str()
+        .expect("name is not a string")
+        .to_string()
 }
 
 #[cfg(test)]

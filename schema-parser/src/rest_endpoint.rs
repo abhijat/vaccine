@@ -1,9 +1,9 @@
 use serde_json::Value;
 
 use crate::component::Component;
-use crate::extract_string_from_value;
-use crate::random_values::choose_random_elements_from_collection;
 use crate::entity_map::EntityMap;
+use crate::random_values::choose_random_elements_from_collection;
+use crate::value_extractors::extract_string_from_value;
 
 #[derive(Debug)]
 pub struct Endpoint {
@@ -54,12 +54,13 @@ impl Endpoint {
 
 #[cfg(test)]
 mod public_api {
+    use std::collections::HashMap;
+
     use serde_json::Value;
 
     use crate::default_value::DefaultValue;
 
     use super::*;
-    use std::collections::HashMap;
 
     fn create_endpoint() -> Endpoint {
         let payload = r#"{ "name": "a",

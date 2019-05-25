@@ -2,9 +2,12 @@ use serde_json::{Map, Value};
 
 use crate::default_value::DefaultValue;
 use crate::entity_map::EntityMap;
-use crate::extract_string_from_value;
 use crate::random_values::*;
-use crate::value_extractors::{extract_datetime_from_node, extract_default_value_from_node};
+use crate::value_extractors::{
+    extract_datetime_from_node,
+    extract_default_value_from_node,
+    extract_string_from_value,
+};
 
 #[derive(Debug)]
 pub struct Component {
