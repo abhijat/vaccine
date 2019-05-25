@@ -11,6 +11,10 @@ pub struct EntityMap {
 }
 
 impl EntityMap {
+    pub fn empty() -> Self {
+        EntityMap { entity_map: HashMap::new() }
+    }
+
     pub fn get(&self, name: &str, key: &str) -> Option<DefaultValue> {
         self.entity_map
             .get(name)
@@ -41,7 +45,7 @@ mod tests {
     use super::*;
 
     fn fixture() -> EntityMap {
-        let mut em = EntityMap { entity_map: HashMap::new() };
+        let mut em = EntityMap::empty();
         em.put("foo", &json!({
             "name": "laptop",
             "brand": "thinkpad",

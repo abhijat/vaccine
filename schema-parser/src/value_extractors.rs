@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn test_extract_default_value_from_node() {
-        let mut em = EntityMap { entity_map: HashMap::new() };
+        let mut em = EntityMap::empty();
         em.put("foo", &json!({
             "name": "alpha",
             "category": "beta",
