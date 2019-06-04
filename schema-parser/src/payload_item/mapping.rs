@@ -75,4 +75,13 @@ mod mapping_item {
         assert_eq!(value["snnum"].as_i64().unwrap(), 11111);
         assert_eq!(value["ss"].as_str().unwrap(), "ss");
     }
+
+    #[test]
+    fn test_mapping_item_random_values() {
+        let (name, value): (String, Value) = create_map_item().random_value();
+        assert_eq!(name, "sn");
+        assert!(value.is_object());
+        assert!(value["snnum"].is_number());
+        assert!(value["ss"].is_string());
+    }
 }
