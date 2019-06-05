@@ -1,10 +1,10 @@
 use serde_json::Value;
 
 use crate::datetime_parser::{datetime_from_now, is_now};
+use crate::payload_item::ItemType;
 use crate::payload_item::PayloadItem;
 use crate::random_values::generate_random_datetime;
 use crate::value_extractors::ValueExt;
-use crate::payload_item::ItemType;
 
 pub struct DatetimeItem {
     name: String,

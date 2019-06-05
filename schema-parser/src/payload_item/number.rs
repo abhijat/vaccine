@@ -1,7 +1,8 @@
 use serde_json::Value;
-use crate::value_extractors::ValueExt;
+
+use crate::payload_item::{ItemType, PayloadItem};
 use crate::random_values::generate_random_number;
-use crate::payload_item::{PayloadItem, ItemType};
+use crate::value_extractors::ValueExt;
 
 pub struct NumberItem {
     name: String,

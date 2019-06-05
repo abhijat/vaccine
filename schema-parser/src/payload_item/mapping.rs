@@ -1,4 +1,3 @@
-
 use serde_json::{Map, Value};
 
 use crate::payload_item::{ItemType, payload_item_from_json, PayloadItem};

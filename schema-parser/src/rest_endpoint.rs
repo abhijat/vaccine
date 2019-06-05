@@ -1,9 +1,8 @@
 use serde_json::{Map, Value};
 
-use crate::component::Component;
-use crate::extract_string_from_value;
 use crate::payload_item::{payload_item_from_json, PayloadItem};
 use crate::random_values::random_elements;
+use crate::value_extractors::ValueExt;
 
 #[derive(Debug)]
 pub struct Endpoint {
@@ -15,11 +14,13 @@ pub struct Endpoint {
 
 impl Endpoint {
     pub fn new(v: &Value) -> Self {
-        let v = v.as_object().expect("payload is not object");
-        let name = extract_string_from_value(v, "name");
-        let url = extract_string_from_value(v, "url");
-        let requires: Vec<String> = v.get("requires").expect("missing `requires`")
-            .as_array().expect("`requires` is not an array")
+        let name = v.get_string("name");
+        let url = v.get_string("url");
+
+        let requires: Vec<String> = v.get("requires")
+            .expect("missing `requires`")
+            .as_array()
+            .expect("`requires` is not an array")
             .iter()
             .map(|v| v.as_str().expect("non string in requires field").to_string())
             .collect();
@@ -53,8 +54,6 @@ impl Endpoint {
 #[cfg(test)]
 mod public_api {
     use serde_json::Value;
-
-    use crate::default_value::DefaultValue;
 
     use super::*;
 

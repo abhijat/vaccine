@@ -1,9 +1,9 @@
 use serde_json::Value;
 
+use crate::payload_item::ItemType;
 use crate::payload_item::PayloadItem;
 use crate::random_values::generate_random_string;
 use crate::value_extractors::ValueExt;
-use crate::payload_item::ItemType;
 
 pub struct StringItem {
     name: String,
