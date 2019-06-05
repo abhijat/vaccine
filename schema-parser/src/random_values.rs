@@ -17,6 +17,11 @@ pub fn generate_random_number() -> i64 {
     r.gen()
 }
 
+pub fn generate_random_float() -> f64 {
+    let mut r = rand::thread_rng();
+    r.gen()
+}
+
 pub fn generate_random_boolean() -> bool {
     let mut r = rand::thread_rng();
     r.gen::<bool>()
@@ -35,7 +40,7 @@ pub fn generate_random_datetime(format_string: &str, timezone: &str) -> String {
     random_datetime.format(format_string).to_string()
 }
 
-pub fn choose_random_elements_from_collection<T>(items: &Vec<T>) -> SliceChooseIter<[T], T> {
+pub fn random_elements<T>(items: &Vec<T>) -> SliceChooseIter<[T], T> {
     let mut r = rand::thread_rng();
     let count = r.gen_range(1, items.len() + 1);
     items.choose_multiple(&mut r, count)
@@ -53,7 +58,7 @@ mod tests {
     fn size_of_random_choices_from_vector() {
         let names = vec!["foo", "bar", "baz"];
         for _i in 0..100 {
-            let p: Vec<&str> = choose_random_elements_from_collection(&names)
+            let p: Vec<&str> = random_elements(&names)
                 .map(|v| *v)
                 .collect();
             assert!(p.len() >= 1 && p.len() <= names.len());

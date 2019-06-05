@@ -1,15 +1,16 @@
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::component::Component;
 use crate::extract_string_from_value;
-use crate::random_values::choose_random_elements_from_collection;
+use crate::payload_item::{payload_item_from_json, PayloadItem};
+use crate::random_values::random_elements;
 
 #[derive(Debug)]
 pub struct Endpoint {
     pub name: String,
     pub url: String,
     pub requires: Vec<String>,
-    pub components: Vec<Component>,
+    pub components: Vec<Box<dyn PayloadItem>>,
 }
 
 impl Endpoint {
@@ -23,31 +24,29 @@ impl Endpoint {
             .map(|v| v.as_str().expect("non string in requires field").to_string())
             .collect();
 
-        let components: Vec<Component> = v.get("schema").expect("missing `schema`")
-            .as_array().expect("`schema` is not an array")
+        let components = v.get("schema")
+            .expect("missing `schema`")
+            .as_array()
+            .expect("`schema` is not an array")
             .iter()
-            .map(Component::new)
-            .collect();
+            .map(payload_item_from_json)
+            .collect::<Vec<Box<dyn PayloadItem>>>();
 
         Endpoint { name, url, requires, components }
     }
 
     pub fn default_payload(&self) -> Value {
-        let mut payload = json!({});
-        for component in self.components.iter() {
-            let (key, value) = component.default_payload();
-            payload[key] = value;
-        }
-        payload
+        let m = self.components.iter()
+            .map(|c| c.default_value())
+            .collect::<Map<String, Value>>();
+        Value::from(m)
     }
 
     pub fn randomized_payload(&self) -> Value {
-        let mut payload = json!({});
-        for component in choose_random_elements_from_collection(&self.components) {
-            let (key, value) = component.randomized_payload();
-            payload[key] = value;
-        }
-        payload
+        let m = random_elements(&self.components)
+            .map(|c| c.random_value())
+            .collect::<Map<String, Value>>();
+        Value::from(m)
     }
 }
 
@@ -96,13 +95,11 @@ mod public_api {
             {
               "name": "constructionMaterial",
               "kind": "mapping",
-              "default_value": {
-                "schema": [
-                  { "name": "wallMaterial", "kind": "string", "default_value": "plasterOfParis" },
-                  { "name": "tonnage", "kind": "number", "default_value": 100 },
-                  { "name": "flammable", "kind": "boolean", "default_value": false }
-                ]
-              }
+              "schema": [
+                 { "name": "wallMaterial", "kind": "string", "default_value": "plasterOfParis" },
+                 { "name": "tonnage", "kind": "number", "default_value": 100 },
+                 { "name": "flammable", "kind": "boolean", "default_value": false }
+               ]
             }
         ] }"#;
 
@@ -122,36 +119,28 @@ mod public_api {
     #[test]
     fn assert_endpoint_components() {
         let e = create_endpoint().components;
-        assert_eq!(e[0].name, "houseType");
+        let (name, value) = e[0].default_value();
+        assert_eq!(name.as_str(), "houseType");
+        assert_eq!(value, Value::from("castle"));
 
-        if let DefaultValue::Number(i) = e[1].default_value {
-            assert_eq!(i, 11001100);
-        } else {
-            panic!("size_in_feet is not a number");
-        }
+        let (name, value) = e[2].default_value();
+        assert_eq!(name.as_str(), "isSurroundedByAMoat");
+        assert_eq!(value, Value::from(true));
 
-        if let DefaultValue::Boolean(b) = e[2].default_value {
-            assert!(b);
-        } else {
-            panic!("isSurroundedByAMoat is not a boolean");
-        }
+        let (name, value) = e[3].default_value();
+        assert_eq!(name, "startDate");
+        assert_eq!(value, Value::from("2001-01-01 11:22:33"));
 
-        if let DefaultValue::Datetime { format, default, timezone } = &e[3].default_value {
-            assert_eq!(timezone, "Asia/Kolkata");
-            assert_eq!(default, "2001-01-01 11:22:33");
-        }
+        let (name, value) = e[4].default_value();
+        assert_eq!(name, "endDate");
 
-        if let DefaultValue::Datetime { format, default, timezone } = &e[4].default_value {
-            assert_eq!(timezone, "Asia/Kolkata");
-        }
-
-        if let DefaultValue::Mapping(ref m) = e[5].default_value {
-            assert_eq!(m.get("wallMaterial"), Some(&json!("plasterOfParis")));
-            assert_eq!(m.get("tonnage"), Some(&json!(100)));
-            assert_eq!(m.get("flammable"), Some(&json!(false)));
-        } else {
-            panic!("material is not mapping");
-        }
+        let (name, value) = e[5].default_value();
+        assert_eq!(name.as_str(), "constructionMaterial");
+        assert_eq!(value, json!({
+            "wallMaterial": "plasterOfParis",
+            "tonnage": 100,
+            "flammable": false,
+        }));
     }
 
     #[test]

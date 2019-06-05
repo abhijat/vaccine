@@ -20,7 +20,7 @@ pub enum ItemType {
     Float,
 }
 
-trait PayloadItem {
+pub trait PayloadItem {
     fn default_value(&self) -> (String, Value);
     fn random_value(&self) -> (String, Value);
     fn item_type(&self) -> ItemType;

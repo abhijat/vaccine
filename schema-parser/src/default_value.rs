@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 use crate::datetime::{datetime_from_now, is_now};
+use crate::random_values::generate_random_datetime;
 
 #[derive(Debug)]
 pub enum DefaultValue {
@@ -8,11 +9,7 @@ pub enum DefaultValue {
     Number(i64),
     Boolean(bool),
     Mapping(Value),
-    Datetime {
-        format: String,
-        default: String,
-        timezone: String,
-    },
+    Datetime { format: String, default: String, timezone: String },
 }
 
 impl DefaultValue {
@@ -24,6 +21,18 @@ impl DefaultValue {
             DefaultValue::Mapping(m) => m.clone(),
             DefaultValue::Datetime { format, default, timezone } =>
                 Self::datetime_to_json(format, default, timezone)
+        }
+    }
+
+    pub fn random_datetime(&self) -> Value {
+        if let DefaultValue::Datetime {
+            format,
+            default,
+            timezone
+        } = &self {
+            json!(generate_random_datetime(format, timezone))
+        } else {
+            panic!("kind and default value do not match!")
         }
     }
 

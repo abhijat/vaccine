@@ -12,6 +12,7 @@ mod rest_endpoint;
 mod random_values;
 mod value_extractors;
 mod datetime;
+pub mod payload_item;
 
 pub fn extract_string_from_value(v: &Map<String, Value>, key: &str) -> String {
     v.get(key)

@@ -3,11 +3,11 @@ use chrono_tz::Tz;
 use humantime::parse_duration;
 use serde_json::{Map, Value};
 
+use crate::datetime::{datetime_from_now, is_now};
+use crate::default_value::DefaultValue;
 use crate::extract_string_from_value;
 use crate::random_values::*;
-use crate::value_extractors::extract_datetime_from_node;
-use crate::datetime::{is_now, datetime_from_now};
-use crate::default_value::DefaultValue;
+use crate::value_extractors::ValueExt;
 
 #[derive(Debug)]
 pub struct Component {
@@ -19,20 +19,17 @@ pub struct Component {
 
 impl Component {
     pub fn new(v: &Value) -> Self {
-        let v = v.as_object().expect("input is not object!");
-
-        let name = extract_string_from_value(v, "name");
-        let kind = extract_string_from_value(v, "kind");
+        let name = v.get_string("name");
+        let kind = v.get_string("kind");
 
         let default_value = if kind == "datetime" {
-            extract_datetime_from_node(v)
+            v.get_datetime()
         } else {
-            Self::extract_default_value(v, "default_value")
-                .expect("failed to extract default value")
+            v.default_value()
         };
 
         let children = if kind == "mapping" {
-            Some(Self::populate_children(v))
+            Some(Self::populate_children(v.as_object().unwrap()))
         } else {
             None
         };
@@ -53,20 +50,8 @@ impl Component {
             "string" => json!(generate_random_string()),
             "number" => json!(generate_random_number()),
             "boolean" => json!(generate_random_boolean()),
-            "mapping" => {
-                self.extract_random_values_from_child_nodes()
-            },
-            "datetime" => {
-                if let DefaultValue::Datetime {
-                    format,
-                    default,
-                    timezone
-                } = &self.default_value {
-                    json!(generate_random_datetime(format, timezone))
-                } else {
-                    panic!("kind and default value do not match!")
-                }
-            }
+            "mapping" => self.extract_random_values_from_child_nodes(),
+            "datetime" => self.default_value.random_datetime(),
             _ => panic!(format!("unknown kind {}", self.kind))
         }
     }
@@ -80,51 +65,13 @@ impl Component {
             .collect()
     }
 
-
-    pub fn extract_default_value(v: &Map<String, Value>, key: &str)
-                                 -> Option<DefaultValue> {
-        let v = v.get(key).expect(&format!("could not extract {} from map", key));
-
-        match v {
-            v if v.is_string() =>
-                Some(DefaultValue::String(v.as_str().unwrap().to_string())),
-            v if v.is_number() =>
-                Some(DefaultValue::Number(v.as_i64().unwrap())),
-            v if v.is_boolean() =>
-                Some(DefaultValue::Boolean(v.as_bool().unwrap())),
-            v if v.is_object() =>
-                Some(DefaultValue::Mapping(Self::extract_default_values_from_child_nodes(v))),
-            _ => None,
-        }
-    }
-
-    fn extract_default_values_from_child_nodes(v: &Value) -> Value {
-        let schema_node = v.as_object()
-            .expect("node is not object!")
-            .get("schema")
-            .expect("could not GET schema from node");
-
-        let mut output: Value = json! {{}};
-        for schema_element in schema_node.as_array()
-            .expect("schema node is not array") {
-            let component = Self::new(schema_element);
-            output[component.name] = component.default_value.to_json();
-        }
-
-        output
-    }
-
     fn extract_random_values_from_child_nodes(&self) -> Value {
-        let mut output: Value = json! {{}};
-
-        if let Some(ref children) = self.children {
-            choose_random_elements_from_collection(children)
-                .for_each(|child| output[&child.name] = child.random_value());
-        } else {
-            panic!("tried to access self.children when no such field");
-        }
-
-        output
+        self.children.as_ref()
+            .map(|c| random_elements(c))
+            .map(|c| c.map(|component| (component.name.clone(), component.random_value()))
+                .collect::<Map<String, Value>>())
+            .map(|m| Value::from(m))
+            .expect("no children to generate random values from!")
     }
 }
 
@@ -218,9 +165,7 @@ mod value_extraction {
     fn extract_string_from_payload() {
         let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "string", "default_value": "ss"}"#)
             .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
-        assert!(v.is_some());
-        match v.unwrap() {
+        match v.default_value() {
             String(s) => assert_eq!(&s, "ss"),
             _ => panic!("unexpected variant"),
         }
@@ -230,9 +175,7 @@ mod value_extraction {
     fn extract_number_from_payload() {
         let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "number", "default_value": 10000}"#)
             .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
-        assert!(v.is_some());
-        match v.unwrap() {
+        match v.default_value() {
             Number(n) => assert_eq!(n, 10000),
             _ => panic!("unexpected variant"),
         }
@@ -242,9 +185,7 @@ mod value_extraction {
     fn extract_boolean_from_payload() {
         let v: Value = serde_json::from_str(r#"{"name": "sn", "kind": "boolean", "default_value": false}"#)
             .unwrap();
-        let v = Component::extract_default_value(&v.as_object().unwrap(), "default_value");
-        assert!(v.is_some());
-        match v.unwrap() {
+        match v.default_value() {
             Boolean(b) => assert!(!b),
             _ => panic!("unexpected variant"),
         }
@@ -271,9 +212,10 @@ mod value_extraction {
 
 #[cfg(test)]
 mod datetime_field {
-    use super::*;
+    use chrono::{Datelike, NaiveDate, NaiveDateTime};
     use chrono_tz::Asia;
-    use chrono::{NaiveDateTime, NaiveDate, Datelike};
+
+    use super::*;
 
     #[test]
     fn datetime_with_fixed_value() {

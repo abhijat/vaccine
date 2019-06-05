@@ -19,7 +19,7 @@ impl DatetimeItem {
             name: v.get_string("name"),
             format: v.get_string("format"),
             timezone: v.get_string("timezone"),
-            default_value: v.get_string("default"),
+            default_value: v.get_string("default_value"),
         }
     }
 }
@@ -55,7 +55,7 @@ mod datetime_item {
 
     fn create_datetime_item() -> DatetimeItem {
         let v: Value = serde_json::from_str(r#"{
-            "default": "now",
+            "default_value": "now",
             "name": "startTime",
             "format": "%Y-%m-%d",
             "timezone": "Asia/Kolkata"
