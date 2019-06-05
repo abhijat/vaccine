@@ -2,7 +2,7 @@ use chrono::Utc;
 use chrono_tz::Tz;
 use humantime::parse_duration;
 
-use crate::datetime::Direction::{Ahead, Behind, Here};
+use crate::datetime_parser::Direction::{Ahead, Behind, Here};
 
 #[derive(Debug, PartialEq)]
 enum Direction {
