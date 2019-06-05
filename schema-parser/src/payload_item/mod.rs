@@ -4,14 +4,16 @@ use serde_json::Value;
 
 use crate::value_extractors::ValueExt;
 
-pub mod string;
 pub mod float;
+pub mod string;
 pub mod number;
 pub mod mapping;
+pub mod boolean;
 pub mod datetime;
 
 pub enum ItemType {
     Datetime,
+    Boolean,
     Mapping,
     Number,
     String,
@@ -32,6 +34,7 @@ pub fn payload_item_from_json(v: &Value) -> Box<dyn PayloadItem> {
         "float" => Box::new(float::FloatItem::new(&v)),
         "datetime" => Box::new(datetime::DatetimeItem::new(&v)),
         "mapping" => Box::new(mapping::MappingItem::new(&v)),
+        "boolean" => Box::new(boolean::BooleanItem::new(&v)),
         _ => panic!(format!("invalid type {}", kind.as_str()))
     }
 }
