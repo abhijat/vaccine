@@ -5,8 +5,9 @@ extern crate serde_json;
 
 use serde_json::{Map, Value};
 
-mod rest_endpoint;
-mod random_values;
-mod value_extractors;
-mod datetime_parser;
+pub mod value_extractors;
+pub mod datetime_parser;
+pub mod configuration;
+pub mod rest_endpoint;
+pub mod random_values;
 pub mod payload_item;

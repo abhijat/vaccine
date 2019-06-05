@@ -1,12 +1,10 @@
 use serde_json::Value;
 
-use crate::entity_map::EntityMap;
 use crate::rest_endpoint::Endpoint;
 
 #[derive(Debug)]
 pub struct Configuration {
     endpoints: Vec<Endpoint>,
-    entity_map: EntityMap,
 }
 
 impl Configuration {
@@ -16,16 +14,13 @@ impl Configuration {
         assert!(v.is_object());
         assert!(v["endpoints"].is_array());
 
-        // This guy needs to be updated during the iteration, so it needs to be mutable
-        let entity_map = EntityMap::empty();
-
         // Build up the endpoints
         let endpoints: Vec<Endpoint> = v["endpoints"].as_array()
             .unwrap()
             .iter()
-            .map(|v| Endpoint::new(v, &entity_map))
+            .map(|v| Endpoint::new(v))
             .collect();
-        Configuration { endpoints, entity_map }
+        Configuration { endpoints }
     }
 }
 
@@ -73,13 +68,11 @@ mod tests {
             {
               "name": "constructionMaterial",
               "kind": "mapping",
-              "default_value": {
-                "schema": [
-                  { "name": "wallMaterial", "kind": "string", "default_value": "plasterOfParis" },
-                  { "name": "tonnage", "kind": "number", "default_value": 100 },
-                  { "name": "flammable", "kind": "boolean", "default_value": false }
-                ]
-              }
+              "schema": [
+                { "name": "wallMaterial", "kind": "string", "default_value": "plasterOfParis" },
+                { "name": "tonnage", "kind": "number", "default_value": 100 },
+                { "name": "flammable", "kind": "boolean", "default_value": false }
+              ]
             }
         ] },
         { "name": "b",
@@ -118,13 +111,11 @@ mod tests {
             {
               "name": "constructionMaterial",
               "kind": "mapping",
-              "default_value": {
-                "schema": [
-                  { "name": "wallMaterial", "kind": "string", "default_value": "plasterOfParis" },
-                  { "name": "tonnage", "kind": "number", "default_value": 100 },
-                  { "name": "flammable", "kind": "boolean", "default_value": false }
-                ]
-              }
+              "schema": [
+                { "name": "wallMaterial", "kind": "string", "default_value": "plasterOfParis" },
+                { "name": "tonnage", "kind": "number", "default_value": 100 },
+                { "name": "flammable", "kind": "boolean", "default_value": false }
+              ]
             }
         ] }
             ]
