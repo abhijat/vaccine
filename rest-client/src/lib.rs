@@ -60,8 +60,7 @@ impl RestClient {
         }
     }
 
-    pub fn post(&self, url: &str, payload: &Value) -> Option<Value> {
-        let request_builder = Client::new().post(self.qualify_url(url));
+    fn send(&self, request_builder: RequestBuilder, payload: &Value) -> Option<Value> {
         let request_builder = match &self.auth_type {
             None => request_builder,
             Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
@@ -73,23 +72,20 @@ impl RestClient {
         }
     }
 
-    pub fn patch(&self, url: &str, payload: &Value) -> reqwest::RequestBuilder {
-        let request_builder = reqwest::Client::new().patch(self.qualify_url(url));
-        let request_builder = match &self.auth_type {
-            None => request_builder,
-            Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
-        };
+    pub fn post(&self, url: &str, payload: &Value) -> Option<Value> {
+        let request_builder = Client::new().post(self.qualify_url(url));
+        self.send(request_builder, payload)
+    }
 
-        match request_builder.json(payload).send() {
-            Ok(mut response) => response.json().expect("response is not JSON formatted!"),
-            Err(err) => None,
-        }
+    pub fn patch(&self, url: &str, payload: &Value) -> Option<Value> {
+        let request_builder = reqwest::Client::new().patch(self.qualify_url(url));
+        self.send(request_builder, payload)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{AuthType, RestClient, post};
+    use crate::{AuthType, post, RestClient};
     use crate::config_builder::ClientConfigurationBuilder;
 
     fn create_config() -> RestClient {
