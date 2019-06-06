@@ -81,7 +81,7 @@ impl ClientConfiguration {
         }
     }
 
-    pub fn url(&self, endpoint: &str) -> String {
+    pub fn qualify_url(&self, endpoint: &str) -> String {
         if self.root_url.ends_with("/") || endpoint.starts_with("/") {
             format!("{}{}", self.root_url.clone(), endpoint)
         } else {
@@ -109,28 +109,21 @@ impl ClientConfiguration {
     pub fn post(&self, client: &reqwest::Client, url: &str) -> reqwest::RequestBuilder {
         let request_builder = client.post(url);
         match &self.auth_type {
-            Some(auth_type) => {
-                self.apply_auth_to_request(auth_type, request_builder)
-            }
             None => request_builder,
+            Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
         }
     }
 }
 
 pub fn post(config: &ClientConfiguration, endpoint: &str, payload: &Value) -> Option<Value> {
-    let url = config.url(endpoint);
+    let url = config.qualify_url(endpoint);
     let client = reqwest::Client::new();
-    let request = config.post(&client, url.as_str());
 
-    let result = request.json(payload).send();
-    match result {
-        Ok(mut response) => {
-            response.json().expect("response is not JSON formatted!")
-        }
-        Err(err) => {
-            println!("{:?}", err);
-            None
-        }
+    match config.post(&client, url.as_str())
+        .json(payload)
+        .send() {
+        Ok(mut response) => response.json().expect("response is not JSON formatted!"),
+        Err(err) => None,
     }
 }
 
