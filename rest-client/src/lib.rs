@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use reqwest::RequestBuilder;
+use reqwest::{Client, RequestBuilder};
 use serde_json::Value;
 
 mod config_builder;
@@ -13,21 +13,21 @@ pub enum AuthType {
 }
 
 #[derive(Debug)]
-pub struct ClientConfiguration {
+pub struct RestClient {
     root_url: String,
     auth_type: Option<AuthType>,
     basic_auth: Option<(String, String)>,
     token: Option<String>,
 }
 
-impl ClientConfiguration {
+impl RestClient {
     pub fn new(
         root_url: &str,
         auth_type: Option<AuthType>,
         basic_auth: Option<(&str, &str)>,
         token: Option<&str>,
     ) -> Self {
-        ClientConfiguration {
+        RestClient {
             root_url: root_url.to_string(),
             auth_type,
             basic_auth: basic_auth.map(|(a, b)| (a.to_owned(), b.to_owned())),
@@ -60,37 +60,41 @@ impl ClientConfiguration {
         }
     }
 
-    pub fn post(&self, client: &reqwest::Client, url: &str) -> reqwest::RequestBuilder {
-        let request_builder = client.post(url);
-        match &self.auth_type {
+    pub fn post(&self, url: &str, payload: &Value) -> Option<Value> {
+        let request_builder = Client::new().post(self.qualify_url(url));
+        let request_builder = match &self.auth_type {
             None => request_builder,
             Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
+        };
+
+        match request_builder.json(payload).send() {
+            Ok(mut response) => response.json().expect("response is not JSON formatted!"),
+            Err(err) => None,
         }
     }
-}
 
-pub fn post(config: &ClientConfiguration, endpoint: &str, payload: &Value) -> Option<Value> {
-    let url = config.qualify_url(endpoint);
-    let client = reqwest::Client::new();
+    pub fn patch(&self, url: &str, payload: &Value) -> reqwest::RequestBuilder {
+        let request_builder = reqwest::Client::new().patch(self.qualify_url(url));
+        let request_builder = match &self.auth_type {
+            None => request_builder,
+            Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
+        };
 
-    match config.post(&client, url.as_str())
-        .json(payload)
-        .send() {
-        Ok(mut response) => response.json().expect("response is not JSON formatted!"),
-        Err(err) => None,
+        match request_builder.json(payload).send() {
+            Ok(mut response) => response.json().expect("response is not JSON formatted!"),
+            Err(err) => None,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{AuthType, ClientConfiguration, post};
+    use crate::{AuthType, RestClient, post};
     use crate::config_builder::ClientConfigurationBuilder;
 
-    fn create_config() -> ClientConfiguration {
+    fn create_config() -> RestClient {
         ClientConfigurationBuilder::new()
             .root_url("http://localhost:8000")
             .build()
     }
-
-
 }

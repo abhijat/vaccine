@@ -1,4 +1,4 @@
-use crate::{AuthType, ClientConfiguration};
+use crate::{AuthType, RestClient};
 
 #[derive(Debug)]
 pub struct ClientConfigurationBuilder {
@@ -38,8 +38,8 @@ impl ClientConfigurationBuilder {
         self
     }
 
-    pub fn build(self) -> ClientConfiguration {
-        ClientConfiguration {
+    pub fn build(self) -> RestClient {
+        RestClient {
             root_url: self.root_url,
             auth_type: self.auth_type,
             basic_auth: self.basic_auth,
