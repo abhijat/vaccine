@@ -4,58 +4,12 @@ extern crate serde_json;
 use reqwest::RequestBuilder;
 use serde_json::Value;
 
+mod config_builder;
+
 #[derive(Debug, PartialEq)]
 pub enum AuthType {
     Basic,
     Bearer,
-}
-
-#[derive(Debug)]
-pub struct ClientConfigurationBuilder {
-    root_url: String,
-    auth_type: Option<AuthType>,
-    basic_auth: Option<(String, String)>,
-    token: Option<String>,
-}
-
-impl ClientConfigurationBuilder {
-    pub fn new() -> Self {
-        ClientConfigurationBuilder {
-            root_url: "".to_string(),
-            auth_type: None,
-            basic_auth: None,
-            token: None,
-        }
-    }
-
-    pub fn root_url(mut self, root_url: &str) -> ClientConfigurationBuilder {
-        self.root_url = root_url.to_owned();
-        self
-    }
-
-    pub fn auth_type(mut self, auth_type: AuthType) -> ClientConfigurationBuilder {
-        self.auth_type = Some(auth_type);
-        self
-    }
-
-    pub fn basic_auth(mut self, username: &str, password: &str) -> ClientConfigurationBuilder {
-        self.basic_auth = Some((username.to_owned(), password.to_owned()));
-        self
-    }
-
-    pub fn token(mut self, token: &str) -> ClientConfigurationBuilder {
-        self.token = Some(token.to_owned());
-        self
-    }
-
-    pub fn build(self) -> ClientConfiguration {
-        ClientConfiguration {
-            root_url: self.root_url,
-            auth_type: self.auth_type,
-            basic_auth: self.basic_auth,
-            token: self.token,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -89,19 +43,19 @@ impl ClientConfiguration {
         }
     }
 
-    fn apply_auth_to_request(&self, auth_type: &AuthType, &r: RequestBuilder) -> RequestBuilder {
+    fn apply_auth_to_request(&self, auth_type: &AuthType, r: RequestBuilder) -> RequestBuilder {
         match auth_type {
             AuthType::Bearer => {
                 let token = self.token
                     .clone()
                     .expect("using bearer auth but token missing from config!");
-                request_builder.bearer_auth(token)
+                r.bearer_auth(token)
             }
             AuthType::Basic => {
                 let (username, password) = self.basic_auth
                     .clone()
                     .expect("using basic auth but username and password missing from config!");
-                request_builder.basic_auth(username, Some(password))
+                r.basic_auth(username, Some(password))
             }
         }
     }
@@ -129,7 +83,8 @@ pub fn post(config: &ClientConfiguration, endpoint: &str, payload: &Value) -> Op
 
 #[cfg(test)]
 mod tests {
-    use crate::{AuthType, ClientConfiguration, ClientConfigurationBuilder, post};
+    use crate::{AuthType, ClientConfiguration, post};
+    use crate::config_builder::ClientConfigurationBuilder;
 
     fn create_config() -> ClientConfiguration {
         ClientConfigurationBuilder::new()
@@ -137,15 +92,5 @@ mod tests {
             .build()
     }
 
-    #[test]
-    fn test_client_config_builder() {
-        let config = ClientConfigurationBuilder::new()
-            .basic_auth("foo", "bar")
-            .auth_type(AuthType::Basic)
-            .root_url("http://localhost:8000")
-            .build();
-        assert_eq!(&config.root_url, "http://localhost:8000");
-        assert_eq!(config.auth_type.unwrap(), AuthType::Basic);
-        assert_eq!(config.basic_auth, Some(("foo".to_owned(), "bar".to_owned())));
-    }
+
 }
