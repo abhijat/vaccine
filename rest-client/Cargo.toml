@@ -1,0 +1,10 @@
+[package]
+name = "rest-client"
+version = "0.1.0"
+authors = ["Abhijat Malviya <malviya.abhijat@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+reqwest = "0.9.17"
+serde = "1.0.92"
+serde_json = "1.0.39"
