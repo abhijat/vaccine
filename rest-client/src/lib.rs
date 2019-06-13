@@ -1,10 +1,10 @@
 #[macro_use]
 extern crate serde_json;
 
-use reqwest::{Client, RequestBuilder};
+use reqwest::{Client, Error, RequestBuilder, Response};
 use serde_json::Value;
 
-mod config_builder;
+pub mod config_builder;
 
 #[derive(Debug, PartialEq)]
 pub enum AuthType {
