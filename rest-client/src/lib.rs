@@ -99,15 +99,11 @@ impl RestClient {
 #[cfg(test)]
 mod rest_client {
     use mockito;
+    use mockito::Matcher;
+    use serde_json::Value;
 
     use crate::{AuthType, RestClient};
     use crate::config_builder::ClientConfigurationBuilder;
-
-    fn create_config() -> RestClient {
-        ClientConfigurationBuilder::new()
-            .root_url("http://localhost:8000")
-            .build()
-    }
 
     #[test]
     fn test_basic_auth_request() {
@@ -140,18 +136,42 @@ mod rest_client {
             .root_url(&mockito::server_url())
             .build();
 
-        // This is the default response. We should not get this!
         let invalid_request = mockito::mock("GET", "/")
             .with_body(r#"{"response": "bad!"}"#)
             .create();
 
-        // We should end up here, because we set up basic auth
         let valid_request = mockito::mock("GET", "/")
             .match_header("authorization", "Bearer xyz")
             .with_body(r#"{"response": "hello"}"#)
             .create();
 
         let response = config.get("/").unwrap();
+        assert_eq!("hello", response["response"].as_str().unwrap());
+    }
+
+    #[test]
+    fn test_simple_post_request() {
+        let config = ClientConfigurationBuilder::new()
+            .token("xyz")
+            .auth_type(AuthType::Bearer)
+            .root_url(&mockito::server_url())
+            .build();
+
+        let payload: Value = json!({ "foo": "bar", "age": 123 });
+
+        let invalid_request = mockito::mock("POST", "/")
+            .match_header("authorization", "Bearer xyz")
+            .with_body(r#"{"response": "bad!"}"#)
+            .create();
+
+
+        let valid_request = mockito::mock("POST", "/")
+            .match_header("authorization", "Bearer xyz")
+            .match_body(Matcher::Json(payload.clone()))
+            .with_body(r#"{"response": "hello"}"#)
+            .create();
+
+        let response = config.post("/", &payload).unwrap();
         assert_eq!("hello", response["response"].as_str().unwrap());
     }
 }
