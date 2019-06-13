@@ -73,24 +73,85 @@ impl RestClient {
     }
 
     pub fn post(&self, url: &str, payload: &Value) -> Option<Value> {
-        let request_builder = Client::new().post(self.qualify_url(url));
+        let request_builder = Client::new().post(&self.qualify_url(url));
         self.send(request_builder, payload)
     }
 
     pub fn patch(&self, url: &str, payload: &Value) -> Option<Value> {
-        let request_builder = reqwest::Client::new().patch(self.qualify_url(url));
+        let request_builder = reqwest::Client::new().patch(&self.qualify_url(url));
         self.send(request_builder, payload)
+    }
+
+    pub fn get(&self, url: &str) -> Option<Value> {
+        let get_request_builder = reqwest::Client::new().get(&self.qualify_url(url));
+        let get_request_builder = match &self.auth_type {
+            None => get_request_builder,
+            Some(auth_type) => self.apply_auth_to_request(auth_type, get_request_builder),
+        };
+
+        match get_request_builder.send() {
+            Ok(mut response) => response.json().expect("response is not JSON formatted!"),
+            Err(err) => None,
+        }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{AuthType, post, RestClient};
+mod rest_client {
+    use mockito;
+
+    use crate::{AuthType, RestClient};
     use crate::config_builder::ClientConfigurationBuilder;
 
     fn create_config() -> RestClient {
         ClientConfigurationBuilder::new()
             .root_url("http://localhost:8000")
             .build()
+    }
+
+    #[test]
+    fn test_basic_auth_request() {
+        let config = ClientConfigurationBuilder::new()
+            .basic_auth("foo", "bar")
+            .auth_type(AuthType::Basic)
+            .root_url(&mockito::server_url())
+            .build();
+
+        // This is the default response. We should not get this!
+        let invalid_request = mockito::mock("GET", "/")
+            .with_body(r#"{"response": "bad!"}"#)
+            .create();
+
+        // We should end up here, because we set up basic auth
+        let valid_request = mockito::mock("GET", "/")
+            .match_header("authorization", "Basic Zm9vOmJhcg==")
+            .with_body(r#"{"response": "hello"}"#)
+            .create();
+
+        let response = config.get("/").unwrap();
+        assert_eq!("hello", response["response"].as_str().unwrap());
+    }
+
+    #[test]
+    fn test_bearer_auth_request() {
+        let config = ClientConfigurationBuilder::new()
+            .token("xyz")
+            .auth_type(AuthType::Bearer)
+            .root_url(&mockito::server_url())
+            .build();
+
+        // This is the default response. We should not get this!
+        let invalid_request = mockito::mock("GET", "/")
+            .with_body(r#"{"response": "bad!"}"#)
+            .create();
+
+        // We should end up here, because we set up basic auth
+        let valid_request = mockito::mock("GET", "/")
+            .match_header("authorization", "Bearer xyz")
+            .with_body(r#"{"response": "hello"}"#)
+            .create();
+
+        let response = config.get("/").unwrap();
+        assert_eq!("hello", response["response"].as_str().unwrap());
     }
 }
