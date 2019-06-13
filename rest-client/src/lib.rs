@@ -60,39 +60,33 @@ impl RestClient {
         }
     }
 
-    fn send(&self, request_builder: RequestBuilder, payload: &Value) -> Option<Value> {
+    fn send(&self, request_builder: RequestBuilder, payload: &Value) -> reqwest::Result<reqwest::Response> {
         let request_builder = match &self.auth_type {
             None => request_builder,
             Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
         };
 
-        match request_builder.json(payload).send() {
-            Ok(mut response) => response.json().expect("response is not JSON formatted!"),
-            Err(err) => None,
-        }
+        request_builder.json(payload).send()
     }
 
-    pub fn post(&self, url: &str, payload: &Value) -> Option<Value> {
+    pub fn post(&self, url: &str, payload: &Value) -> reqwest::Result<reqwest::Response> {
         let request_builder = Client::new().post(&self.qualify_url(url));
         self.send(request_builder, payload)
     }
 
-    pub fn patch(&self, url: &str, payload: &Value) -> Option<Value> {
+    pub fn patch(&self, url: &str, payload: &Value) -> reqwest::Result<reqwest::Response> {
         let request_builder = reqwest::Client::new().patch(&self.qualify_url(url));
         self.send(request_builder, payload)
     }
 
-    pub fn get(&self, url: &str) -> Option<Value> {
+    pub fn get(&self, url: &str) -> reqwest::Result<reqwest::Response> {
         let get_request_builder = reqwest::Client::new().get(&self.qualify_url(url));
         let get_request_builder = match &self.auth_type {
             None => get_request_builder,
             Some(auth_type) => self.apply_auth_to_request(auth_type, get_request_builder),
         };
 
-        match get_request_builder.send() {
-            Ok(mut response) => response.json().expect("response is not JSON formatted!"),
-            Err(err) => None,
-        }
+        get_request_builder.send()
     }
 }
 
@@ -113,18 +107,18 @@ mod rest_client {
             .root_url(&mockito::server_url())
             .build();
 
-        // This is the default response. We should not get this!
-        let invalid_request = mockito::mock("GET", "/")
-            .with_body(r#"{"response": "bad!"}"#)
-            .create();
+        let header = base64::encode("foo:bar");
+        let header = format!("Basic {}", header);
 
-        // We should end up here, because we set up basic auth
         let valid_request = mockito::mock("GET", "/")
-            .match_header("authorization", "Basic Zm9vOmJhcg==")
+            .match_header("authorization", header.as_str())
             .with_body(r#"{"response": "hello"}"#)
             .create();
 
-        let response = config.get("/").unwrap();
+        let response: Value = config.get("/")
+            .unwrap()
+            .json()
+            .expect("response is not of type JSON!");
         assert_eq!("hello", response["response"].as_str().unwrap());
     }
 
@@ -136,16 +130,15 @@ mod rest_client {
             .root_url(&mockito::server_url())
             .build();
 
-        let invalid_request = mockito::mock("GET", "/")
-            .with_body(r#"{"response": "bad!"}"#)
-            .create();
-
         let valid_request = mockito::mock("GET", "/")
             .match_header("authorization", "Bearer xyz")
             .with_body(r#"{"response": "hello"}"#)
             .create();
 
-        let response = config.get("/").unwrap();
+        let response: Value = config.get("/")
+            .unwrap()
+            .json()
+            .expect("response is not of type JSON!");
         assert_eq!("hello", response["response"].as_str().unwrap());
     }
 
@@ -159,19 +152,16 @@ mod rest_client {
 
         let payload: Value = json!({ "foo": "bar", "age": 123 });
 
-        let invalid_request = mockito::mock("POST", "/")
-            .match_header("authorization", "Bearer xyz")
-            .with_body(r#"{"response": "bad!"}"#)
-            .create();
-
-
         let valid_request = mockito::mock("POST", "/")
             .match_header("authorization", "Bearer xyz")
             .match_body(Matcher::Json(payload.clone()))
             .with_body(r#"{"response": "hello"}"#)
             .create();
 
-        let response = config.post("/", &payload).unwrap();
+        let response: Value = config.post("/", &payload)
+            .unwrap()
+            .json()
+            .expect("response is not of type JSON!");
         assert_eq!("hello", response["response"].as_str().unwrap());
     }
 }
