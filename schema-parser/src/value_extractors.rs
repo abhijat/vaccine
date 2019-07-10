@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 pub trait ValueExt {
     fn get_string(&self, key: &str) -> String;

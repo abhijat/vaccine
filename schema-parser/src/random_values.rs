@@ -49,9 +49,6 @@ pub fn random_elements<T>(items: &Vec<T>) -> SliceChooseIter<[T], T> {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Duration, NaiveDateTime, TimeZone, Utc};
-    use chrono_tz::Tz;
-
     use super::*;
 
     #[test]

@@ -1,13 +1,11 @@
 [package]
-name = "rest-client"
+name = "vaccine-bin"
 version = "0.1.0"
 authors = ["Abhijat Malviya <malviya.abhijat@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-reqwest = "0.9.17"
-serde = "1.0.92"
+rest-client = { path = "../rest-client" }
+schema-parser = { path = "../schema-parser" }
 serde_json = "1.0.39"
-serde_derive = "1.0.92"
-mockito = "0.17.1"
-base64 = "0.10.1"
+clap = "2.33.0"

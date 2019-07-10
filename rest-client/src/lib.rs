@@ -1,4 +1,7 @@
 #[macro_use]
+extern crate serde_derive;
+
+#[macro_use]
 extern crate serde_json;
 
 use reqwest::{Client, Error, RequestBuilder, Response};
@@ -6,10 +9,11 @@ use serde_json::Value;
 
 pub mod config_builder;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum AuthType {
     Basic,
     Bearer,
+    JWT,
 }
 
 #[derive(Debug)]
@@ -57,6 +61,12 @@ impl RestClient {
                     .expect("using basic auth but username and password missing from config!");
                 r.basic_auth(username, Some(password))
             }
+            AuthType::JWT => {
+                let token = self.token
+                    .clone()
+                    .expect("using JWT auth but token missing from config!");
+                r.header("authorization", format!("JWT {}", token))
+            }
         }
     }
 
@@ -65,7 +75,6 @@ impl RestClient {
             None => request_builder,
             Some(auth_type) => self.apply_auth_to_request(auth_type, request_builder),
         };
-
         request_builder.json(payload).send()
     }
 

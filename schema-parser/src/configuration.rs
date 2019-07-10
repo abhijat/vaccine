@@ -1,13 +1,33 @@
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+
 use serde_json::Value;
 
 use crate::rest_endpoint::Endpoint;
+use rest_client::AuthType;
 
 #[derive(Debug)]
-pub struct Configuration {
-    endpoints: Vec<Endpoint>,
+pub struct Session {
+    pub root_url: String,
+    pub auth_type: Option<AuthType>,
+    pub endpoints: HashMap<String, Endpoint>,
+    pub created: HashMap<String, Value>,
 }
 
-impl Configuration {
+impl Session {
+    pub fn from_file(path: &str) -> Self {
+        let mut file = File::open(path).expect(&format!("failed to open {}", path));
+
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer).expect("failed to read file");
+
+        let value = serde_json::from_str(buffer.as_str())
+            .expect(&format!("failed to read json from {}", path));
+
+        Self::new(&value)
+    }
+
     pub fn new(v: &Value) -> Self {
 
         // Make sure the types match
@@ -15,12 +35,25 @@ impl Configuration {
         assert!(v["endpoints"].is_array());
 
         // Build up the endpoints
-        let endpoints: Vec<Endpoint> = v["endpoints"].as_array()
+        let endpoints: HashMap<String, Endpoint> = v["endpoints"].as_array()
             .unwrap()
             .iter()
             .map(|v| Endpoint::new(v))
+            .map(|e| (e.name.clone(), e))
             .collect();
-        Configuration { endpoints }
+
+        let auth_type: Option<AuthType> = if let Some(v) = v.get("auth_type") {
+            serde_json::from_value(v.clone()).ok()
+        } else {
+            None
+        };
+
+        Session {
+            endpoints,
+            created: HashMap::new(),
+            root_url: v["root_url"].as_str().expect("root_url missing or not string").to_string(),
+            auth_type
+        }
     }
 }
 
@@ -122,7 +155,7 @@ mod tests {
         }"#;
 
         let v: Value = serde_json::from_str(data).unwrap();
-        let config = Configuration::new(&v);
+        let config = Session::new(&v);
         assert_eq!(config.endpoints.len(), 2);
     }
 }

@@ -1,2 +1,6 @@
 [workspace]
-members = ["schema-parser", "rest-client"]
+members = [
+    "schema-parser",
+    "rest-client",
+    "vaccine-bin",
+]

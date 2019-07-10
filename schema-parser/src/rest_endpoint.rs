@@ -130,7 +130,7 @@ mod public_api {
         assert_eq!(name, "startDate");
         assert_eq!(value, Value::from("2001-01-01 11:22:33"));
 
-        let (name, value) = e[4].default_value();
+        let (name, _value) = e[4].default_value();
         assert_eq!(name, "endDate");
 
         let (name, value) = e[5].default_value();
