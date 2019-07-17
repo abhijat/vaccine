@@ -46,3 +46,7 @@ The following data types are supported:
 6. Nested JSON objects
 
 Lists are planned to be added.
+
+
+#### Sample app
+Vaccine is tested against [castles](https://github.com/abhijat/castles)
